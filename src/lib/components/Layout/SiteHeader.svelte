@@ -27,7 +27,7 @@ SiteHeader.svelte — NYPL-inspired header
       class="logo"
       aria-label="New York Public Library style site"
     >
-      <span class="logo-mark" aria-hidden="true">NYPL</span>
+      <img src="{base}/photos/nypl-lion.png" alt="NYPL" class="logo-mark" />
       <span class="logo-text">
         <span class="logo-line">New York</span>
         <span class="logo-line">Public</span>
@@ -82,12 +82,11 @@ SiteHeader.svelte — NYPL-inspired header
     height: 78px;
     flex: 0 0 auto;
     border-radius: 999px;
-    display: grid;
-    place-items: center;
-    background: #111;
-    color: #fff;
-    font-family: var(--font-sans);
-    font-size: 0.85rem;
+    display: block;
+    object-fit: contain;
+  }
+
+  .logo-text {    font-size: 0.85rem;
     font-weight: 700;
     letter-spacing: 0.04em;
   }
