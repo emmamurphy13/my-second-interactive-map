@@ -9,52 +9,29 @@ USAGE EXAMPLE:
 <SiteFooter />
 -->
 <script>
+  import { base } from '$app/paths';
+
   let {
-    navLinks = [
-      {
-        label: 'Arts & Culture',
-        href: 'https://www.nycitynewsservice.com/nycns_topics/arts-culture/',
-      },
-      {
-        label: 'Business',
-        href: 'https://www.nycitynewsservice.com/nycns_topics/business/',
-      },
-      {
-        label: 'Education',
-        href: 'https://www.nycitynewsservice.com/nycns_topics/education/',
-      },
-      {
-        label: 'Environment',
-        href: 'https://www.nycitynewsservice.com/nycns_topics/environment/',
-      },
-      {
-        label: 'Health',
-        href: 'https://www.nycitynewsservice.com/nycns_topics/health/',
-      },
-      {
-        label: 'Housing',
-        href: 'https://www.nycitynewsservice.com/nycns_topics/housing/',
-      },
-      {
-        label: 'Politics',
-        href: 'https://www.nycitynewsservice.com/nycns_topics/politics/',
-      },
-    ],
+    navLinks = [],
     aboutLinks = [
       {
-        label: 'About Us',
-        href: 'https://www.nycitynewsservice.com/about/',
+        label: 'Hours & Locations',
+        href: 'https://www.nypl.org/locations',
       },
       {
-        label: 'Contact Us',
-        href: 'https://www.nycitynewsservice.com/contact/',
+        label: 'Get a Library Card',
+        href: 'https://www.nypl.org/library-card',
+      },
+      {
+        label: 'Donate',
+        href: 'https://www.nypl.org/support',
       },
     ],
-    logoHref = 'https://www.journalism.cuny.edu/',
-    logoAriaLabel = 'Visit the Craig Newmark Graduate School of Journalism website',
-    logoTitle = 'Craig Newmark Graduate School of Journalism at CUNY',
-    tagline = 'A student-powered service at the Craig Newmark Graduate School of Journalism',
-    orgName = 'NYCity News Service',
+    logoHref = `${base}/`,
+    logoAriaLabel = 'Library home',
+    logoTitle = 'The New York Public Library',
+    tagline = '',
+    orgName = 'The New York Public Library',
   } = $props();
 
   const currentYear = new Date().getFullYear();
@@ -246,8 +223,8 @@ USAGE EXAMPLE:
   }
 
   .footer-main {
-    background-color: var(--color-cuny-blue-dark);
-    padding: var(--spacing-xl) var(--spacing-md);
+    background-color: #111;
+    padding: var(--spacing-lg) var(--spacing-md);
   }
 
   .footer-container {
@@ -256,87 +233,95 @@ USAGE EXAMPLE:
   }
 
   .footer-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: var(--spacing-lg);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    align-items: center;
   }
 
-  /* Brand column */
   .footer-brand {
-    text-align: left;
+    text-align: center;
   }
 
   .footer-logo-link {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
     text-decoration: none;
-    color: var(--color-white);
+    color: #fff;
+    font-family: var(--font-serif);
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+  }
+
+  .footer-logo-link::before {
+    content: 'NYPL';
+    width: 22px;
+    height: 22px;
+    border-radius: 999px;
+    display: inline-grid;
+    place-items: center;
+    background: #fff;
+    color: #111;
+    font-family: var(--font-sans);
+    font-size: 0.58rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+
+  .footer-logo-link::after {
+    content: 'The New York Public Library';
   }
 
   .cuny-logo {
-    width: 100%;
-    max-width: var(--max-width-footer-logo);
-    height: auto;
-    margin: 0 auto;
-    display: block;
-    transition: var(--transition-opacity);
-  }
-
-  .footer-logo-link:hover .cuny-logo {
-    opacity: var(--opacity-hover);
+    display: none;
   }
 
   .footer-tagline {
-    color: var(--color-border);
-    font-family: var(--font-serif);
-    font-size: var(--font-size-sm);
-    line-height: var(--leading-normal);
-    margin-top: var(--spacing-sm);
-    margin-bottom: 0;
+    display: none;
   }
 
-  /* Column headings */
   .footer-heading {
-    color: var(--color-white);
-    font-family: var(--font-sans);
-    font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-bold);
-    letter-spacing: var(--letter-spacing-wider);
-    text-transform: uppercase;
-    margin-bottom: var(--spacing-sm);
-    padding-bottom: var(--spacing-xs);
-    border-bottom: var(--border-width-thin) solid var(--color-medium-gray);
+    display: none;
   }
 
-  /* Link lists */
   .footer-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
+    align-items: center;
+    justify-content: center;
     list-style: none;
-    margin: 0;
+    margin: 0.15rem 0 0;
     padding: 0;
   }
 
   .footer-list li {
-    margin-bottom: var(--spacing-xs);
+    margin: 0;
+  }
+
+  .footer-list li:not(:last-child)::after {
+    content: '|';
+    color: #888;
+    margin: 0 var(--spacing-sm);
   }
 
   .footer-link {
-    color: var(--color-border);
+    color: #f5f5f5;
     text-decoration: none;
     font-family: var(--font-sans);
     font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-normal);
-    letter-spacing: var(--letter-spacing-wider);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: 0.02em;
     transition: var(--transition-color);
   }
 
   .footer-link:hover {
-    color: var(--color-white);
+    color: #d62839;
   }
 
-  /* Bottom copyright bar */
   .footer-bottom {
-    background-color: var(--color-cuny-blue-dark);
-    padding: var(--spacing-sm) var(--spacing-md);
-    text-align: center;
+    display: none;
   }
 
   .footer-copyright {
@@ -347,19 +332,11 @@ USAGE EXAMPLE:
     margin: 0;
   }
 
-  /* Tablet and up: multi-column layout */
-  @include tablet {
+  @media (min-width: 900px) {
     .footer-grid {
-      grid-template-columns: 2fr 1fr 1fr;
-      gap: var(--spacing-xl);
-    }
-
-    .footer-brand {
-      text-align: left;
-    }
-
-    .cuny-logo {
-      margin: 0;
+      flex-direction: row;
+      justify-content: space-between;
+      width: 100%;
     }
   }
 </style>
