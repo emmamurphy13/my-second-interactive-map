@@ -1,3 +1,5 @@
+import { LIBRARIES as fallbackLibraries } from '$lib/data/nycLibraries.js';
+
 const LOCATIONS_URL =
   'https://data.cityofnewyork.us/resource/feuq-due4.json?$limit=5000';
 const ATTENDANCE_URL =
@@ -109,90 +111,23 @@ function buildFeatureCollection(libraries) {
   };
 }
 
-export async function load({ fetch }) {
-  const [locationsResponse, attendanceResponse] = await Promise.all([
-    fetch(LOCATIONS_URL),
-    fetch(ATTENDANCE_URL),
-  ]);
+function buildFallbackLibraries() {
+  return fallbackLibraries.map((library) => ({
+    ...library,
+    adultProgram: 0,
+    adultAttendance: 0,
+    youngAdultProgram: 0,
+    youngAdultAttendance: 0,
+    juvenileProgram: 0,
+    juvenileAttendance: 0,
+    outreachProgram: 0,
+    outreachAttendance: 0,
+    totalPrograms: library.programs.length,
+  }));
+}
 
-  const [locationsRows, attendanceRows] = await Promise.all([
-    locationsResponse.json(),
-    attendanceResponse.json(),
-  ]);
-
-  const nyplLocationsByName = new Map(
-    locationsRows
-      .filter((row) => row.system === 'NYPL')
-      .map((row) => [normalizeBranchName(row.name), row])
-  );
-
-  const libraries = attendanceRows
-    .filter((row) => BOROUGH_ORDER.includes(row['boro_central_library']))
-    .filter((row) => row.branch)
-    .map((row) => {
-      const branchName = String(row.branch).replace(/\*.*$/g, '').trim();
-      const normalized = normalizeBranchName(branchName);
-
-      const totalAttendance = toNumber(row._total_attendance);
-      if (totalAttendance <= 0) return null;
-
-      const location = nyplLocationsByName.get(normalized);
-      if (!location?.the_geom?.coordinates) return null;
-
-      const adultAttendance = toNumber(row.adult_attendance);
-      const adultProgram = toNumber(row.adult_program);
-      const youngAdultAttendance = toNumber(row.young_adult_attendance);
-      const youngAdultProgram = toNumber(row.young_adult_program);
-      const juvenileAttendance = toNumber(row.juvenile_attendance);
-      const juvenileProgram = toNumber(row.juvenile_program);
-      const outreachAttendance = toNumber(row.outreach_services_attendance);
-      const outreachProgram = toNumber(row.outreach_services_program);
-      const totalPrograms = toNumber(row._total_program);
-
-      return {
-        name: location.name ?? branchName,
-        borough: mapBorough(row['boro_central_library']),
-        neighborhood: location.city ?? 'New York',
-        address: buildAddress(location),
-        coordinates: location.the_geom.coordinates,
-        attendance: totalAttendance,
-        focus: buildFocus(
-          adultAttendance,
-          youngAdultAttendance,
-          juvenileAttendance,
-          outreachAttendance
-        ),
-        adultProgram,
-        adultAttendance,
-        youngAdultProgram,
-        youngAdultAttendance,
-        juvenileProgram,
-        juvenileAttendance,
-        outreachProgram,
-        outreachAttendance,
-        totalPrograms,
-        programs: [
-          `Adult attendance: ${adultAttendance.toLocaleString('en-US')}`,
-          `Young adult attendance: ${youngAdultAttendance.toLocaleString('en-US')}`,
-          `Juvenile attendance: ${juvenileAttendance.toLocaleString('en-US')}`,
-          `Outreach attendance: ${outreachAttendance.toLocaleString('en-US')}`,
-          `Total programs: ${totalPrograms.toLocaleString('en-US')}`,
-        ],
-      };
-    })
-    .filter(Boolean)
-    .sort((left, right) => right.attendance - left.attendance);
-
-  const boroughOptions = [
-    { value: 'all', label: 'All boroughs' },
-    ...BOROUGH_ORDER.filter((borough) =>
-      libraries.some((library) => library.borough === borough)
-    ).map((borough) => ({ value: borough, label: borough })),
-  ];
-
-  const focusOptions = [
-    ...new Set(libraries.map((library) => library.focus)),
-  ].map((focus) => ({ value: focus, label: focus }));
+function buildFallbackData() {
+  const libraries = buildFallbackLibraries();
 
   return {
     showHeader: true,
@@ -201,11 +136,128 @@ export async function load({ fetch }) {
     pageDescription:
       'Explore NYPL branch locations and click any point to view program attendance from NYC Open Data.',
     boroughOrder: BOROUGH_ORDER,
-    boroughOptions,
-    focusOptions,
+    boroughOptions: [
+      { value: 'all', label: 'All boroughs' },
+      ...BOROUGH_ORDER.map((borough) => ({ value: borough, label: borough })),
+    ],
+    focusOptions: [...new Set(libraries.map((library) => library.focus))].map(
+      (focus) => ({ value: focus, label: focus })
+    ),
     libraries,
     libraryGeojson: buildFeatureCollection(libraries),
     mapCenter: buildMapCenter(libraries),
     summary: buildSummary(libraries),
   };
+}
+
+export async function load({ fetch }) {
+  try {
+    const [locationsResponse, attendanceResponse] = await Promise.all([
+      fetch(LOCATIONS_URL),
+      fetch(ATTENDANCE_URL),
+    ]);
+
+    if (!locationsResponse.ok || !attendanceResponse.ok) {
+      throw new Error(
+        `NYPL data request failed: ${locationsResponse.status} / ${attendanceResponse.status}`
+      );
+    }
+
+    const [locationsRows, attendanceRows] = await Promise.all([
+      locationsResponse.json(),
+      attendanceResponse.json(),
+    ]);
+
+    const nyplLocationsByName = new Map(
+      locationsRows
+        .filter((row) => row.system === 'NYPL')
+        .map((row) => [normalizeBranchName(row.name), row])
+    );
+
+    const libraries = attendanceRows
+      .filter((row) => BOROUGH_ORDER.includes(row['boro_central_library']))
+      .filter((row) => row.branch)
+      .map((row) => {
+        const branchName = String(row.branch).replace(/\*.*$/g, '').trim();
+        const normalized = normalizeBranchName(branchName);
+
+        const totalAttendance = toNumber(row._total_attendance);
+        if (totalAttendance <= 0) return null;
+
+        const location = nyplLocationsByName.get(normalized);
+        if (!location?.the_geom?.coordinates) return null;
+
+        const adultAttendance = toNumber(row.adult_attendance);
+        const adultProgram = toNumber(row.adult_program);
+        const youngAdultAttendance = toNumber(row.young_adult_attendance);
+        const youngAdultProgram = toNumber(row.young_adult_program);
+        const juvenileAttendance = toNumber(row.juvenile_attendance);
+        const juvenileProgram = toNumber(row.juvenile_program);
+        const outreachAttendance = toNumber(row.outreach_services_attendance);
+        const outreachProgram = toNumber(row.outreach_services_program);
+        const totalPrograms = toNumber(row._total_program);
+
+        return {
+          name: location.name ?? branchName,
+          borough: mapBorough(row['boro_central_library']),
+          neighborhood: location.city ?? 'New York',
+          address: buildAddress(location),
+          coordinates: location.the_geom.coordinates,
+          attendance: totalAttendance,
+          focus: buildFocus(
+            adultAttendance,
+            youngAdultAttendance,
+            juvenileAttendance,
+            outreachAttendance
+          ),
+          adultProgram,
+          adultAttendance,
+          youngAdultProgram,
+          youngAdultAttendance,
+          juvenileProgram,
+          juvenileAttendance,
+          outreachProgram,
+          outreachAttendance,
+          totalPrograms,
+          programs: [
+            `Adult attendance: ${adultAttendance.toLocaleString('en-US')}`,
+            `Young adult attendance: ${youngAdultAttendance.toLocaleString('en-US')}`,
+            `Juvenile attendance: ${juvenileAttendance.toLocaleString('en-US')}`,
+            `Outreach attendance: ${outreachAttendance.toLocaleString('en-US')}`,
+            `Total programs: ${totalPrograms.toLocaleString('en-US')}`,
+          ],
+        };
+      })
+      .filter(Boolean)
+      .sort((left, right) => right.attendance - left.attendance);
+
+    const boroughOptions = [
+      { value: 'all', label: 'All boroughs' },
+      ...BOROUGH_ORDER.filter((borough) =>
+        libraries.some((library) => library.borough === borough)
+      ).map((borough) => ({ value: borough, label: borough })),
+    ];
+
+    const focusOptions = [
+      ...new Set(libraries.map((library) => library.focus)),
+    ].map((focus) => ({ value: focus, label: focus }));
+
+    return {
+      showHeader: true,
+      showFooter: true,
+      pageTitle: 'NYPL Branch Program Attendance Map',
+      pageDescription:
+        'Explore NYPL branch locations and click any point to view program attendance from NYC Open Data.',
+      boroughOrder: BOROUGH_ORDER,
+      boroughOptions,
+      focusOptions,
+      libraries,
+      libraryGeojson: buildFeatureCollection(libraries),
+      mapCenter: buildMapCenter(libraries),
+      summary: buildSummary(libraries),
+    };
+  } catch (error) {
+    console.warn('NYPL data fetch failed; using bundled fallback data.', error);
+    return buildFallbackData();
+  }
 }

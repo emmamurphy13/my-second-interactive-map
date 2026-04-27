@@ -20,8 +20,124 @@
 
   const formatter = new Intl.NumberFormat('en-US');
 
+  const PROGRAM_COLORS = ['#dbeafe', '#93c5fd', '#3b82f6', '#1d4ed8'];
+
+  function buildProgramScale(libraries) {
+    const rankedLibraries = libraries
+      .map((library, index) => ({
+        index,
+        totalPrograms: Number(library.totalPrograms ?? 0),
+      }))
+      .sort((left, right) => {
+        if (left.totalPrograms !== right.totalPrograms) {
+          return left.totalPrograms - right.totalPrograms;
+        }
+
+        return left.index - right.index;
+      });
+
+    if (rankedLibraries.length === 0) {
+      return {
+        expression: [
+          'match',
+          ['get', 'programTier'],
+          1,
+          PROGRAM_COLORS[0],
+          2,
+          PROGRAM_COLORS[1],
+          3,
+          PROGRAM_COLORS[2],
+          4,
+          PROGRAM_COLORS[3],
+          PROGRAM_COLORS[3],
+        ],
+        items: PROGRAM_COLORS.map((color, tier) => ({
+          tier: tier + 1,
+          color,
+          label: 'No branches',
+        })),
+        tiersByIndex: new Map(),
+      };
+    }
+
+    const chunkSize = Math.ceil(rankedLibraries.length / PROGRAM_COLORS.length);
+    const tierAssignments = new globalThis.Map();
+    const tierValues = Array.from({ length: PROGRAM_COLORS.length }, () => []);
+
+    rankedLibraries.forEach((entry, sortedIndex) => {
+      const tier = Math.min(
+        PROGRAM_COLORS.length,
+        Math.floor(sortedIndex / chunkSize) + 1
+      );
+      tierAssignments.set(entry.index, tier);
+      tierValues[tier - 1].push(entry.totalPrograms);
+    });
+
+    return {
+      expression: [
+        'match',
+        ['get', 'programTier'],
+        1,
+        PROGRAM_COLORS[0],
+        2,
+        PROGRAM_COLORS[1],
+        3,
+        PROGRAM_COLORS[2],
+        4,
+        PROGRAM_COLORS[3],
+        PROGRAM_COLORS[3],
+      ],
+      items: tierValues.map((values, tierIndex) => {
+        const color = PROGRAM_COLORS[tierIndex];
+
+        if (values.length === 0) {
+          return {
+            tier: tierIndex + 1,
+            color,
+            label: 'No branches',
+          };
+        }
+
+        const minimum = values[0];
+        const maximum = values[values.length - 1];
+
+        if (tierIndex === PROGRAM_COLORS.length - 1) {
+          return {
+            tier: tierIndex + 1,
+            color,
+            label: `${minimum}+ programs`,
+          };
+        }
+
+        if (minimum === maximum) {
+          return {
+            tier: tierIndex + 1,
+            color,
+            label: `${minimum} program${minimum === 1 ? '' : 's'}`,
+          };
+        }
+
+        return {
+          tier: tierIndex + 1,
+          color,
+          label: `${minimum}–${maximum} programs`,
+        };
+      }),
+      tiersByIndex: tierAssignments,
+    };
+  }
+
+  const programScale = $derived.by(() => buildProgramScale(data.libraries));
+
+  const librariesWithProgramTier = $derived.by(() =>
+    data.libraries.map((library, index) => ({
+      ...library,
+      programTier: programScale.tiersByIndex.get(index) ?? 1,
+    }))
+  );
+
   const filteredLibraries = $derived(
-    data.libraries.filter((library) => {
+    librariesWithProgramTier.filter((library) => {
       const searchText =
         `${library.name} ${library.neighborhood} ${library.address} ${library.programs.join(' ')}`.toLowerCase();
       const matchesSearch =
@@ -201,7 +317,7 @@
           zoom={10}
           border={true}
           height={620}
-          caption="NYC public library branches with featured program themes. Click a marker to see a popup with address and programs."
+          caption="NYC public library branches colored by a four-level program scale. Click a marker to see a popup with address and programs."
           credit="Map tiles by OpenFreeMap / OpenStreetMap contributors"
         >
           <MapLayer
@@ -210,17 +326,7 @@
             data={mapGeojson}
             paint={{
               'circle-radius': 8,
-              'circle-color': [
-                'match',
-                ['get', 'borough'],
-                'Bronx',
-                '#1b7f5a',
-                'Manhattan',
-                '#0033a1',
-                'Staten Island',
-                '#6b4ca5',
-                '#666666',
-              ],
+              'circle-color': programScale.expression,
               'circle-stroke-width': 2,
               'circle-stroke-color': '#ffffff',
             }}
@@ -228,14 +334,15 @@
           />
         </Map>
 
-        <div class="legend" aria-label="Borough legend">
-          {#each data.boroughOrder as borough (borough)}
+        <div class="legend" aria-label="Program scale legend">
+          <span class="legend-title">Programs per branch</span>
+          {#each programScale.items as item (item.tier)}
             <span class="legend-item">
               <span
                 class="legend-swatch"
-                style={`background-color: ${borough === 'Bronx' ? '#1b7f5a' : borough === 'Manhattan' ? '#0033a1' : '#6b4ca5'}`}
+                style={`background-color: ${item.color}`}
               ></span>
-              {borough}
+              {item.label}
             </span>
           {/each}
         </div>
@@ -263,21 +370,22 @@
           <p>
             Branch names, attendance counts, and addresses are adapted from the
             reference library dataset. Program labels are curated to show how
-            the map can pair locations with recurring neighborhood services.
+            the map can pair locations with recurring neighborhood services, and
+            the dot colors rise from lighter to darker blue as program counts go up.
           </p>
           <p>
             Want to dig deeper? Visit the
             <a
               href="https://www.nypl.org/locations"
               target="_blank"
-              rel="noreferrer">NYPL locations directory</a
-            >
+              rel="noreferrer"
+            >NYPL locations directory</a>
             or open the branch page on
             <a
               href={buildMapsHref(data.summary.topLibrary?.address ?? '')}
               target="_blank"
-              rel="noreferrer">Google Maps</a
-            >.
+              rel="noreferrer"
+            >Google Maps</a>.
           </p>
         </MethodologyBox>
       </aside>
@@ -375,6 +483,13 @@
     flex-wrap: wrap;
     gap: var(--spacing-sm);
     align-items: center;
+  }
+
+  .legend-title {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text);
+    margin-right: var(--spacing-xxs);
   }
 
   .legend-item {
