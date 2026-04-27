@@ -6,13 +6,13 @@ import SiteFooter from '$lib/components/Layout/SiteFooter.svelte';
 describe('SiteHeader', () => {
   it('renders the logo', () => {
     render(SiteHeader);
-    expect(screen.getByLabelText('NYCity News Service')).toBeTruthy();
+    expect(screen.getByLabelText('New York Public Library style site')).toBeTruthy();
   });
 
   it('renders default navigation links', () => {
     render(SiteHeader);
-    expect(screen.getByText('Arts & Culture')).toBeTruthy();
-    expect(screen.getByText('Politics')).toBeTruthy();
+    expect(screen.getByText('Books & Research')).toBeTruthy();
+    expect(screen.getByText('Locations')).toBeTruthy();
   });
 
   it('renders custom navigation links', () => {
@@ -37,14 +37,14 @@ describe('SiteFooter', () => {
     render(SiteFooter);
     expect(
       screen.getByLabelText(
-        'Craig Newmark Graduate School of Journalism at CUNY'
+        'The New York Public Library'
       )
     ).toBeTruthy();
   });
 
   it('renders footer navigation links', () => {
     render(SiteFooter);
-    expect(screen.getByText('ABOUT US')).toBeTruthy();
-    expect(screen.getByText('CONTACT US')).toBeTruthy();
+    expect(screen.getByText('HOURS & LOCATIONS')).toBeTruthy();
+    expect(screen.getByText('DONATE')).toBeTruthy();
   });
 });
